@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -10,28 +10,50 @@ export class ProductsService {
   constructor(
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>
-  )
-  {}
+  ) { }
   async create(createProductDto: CreateProductDto) {
-    const newProduct = this.productRepository.create(createProductDto)
-    console.log(newProduct);
-    
+    const newProduct: Product = this.productRepository.create(createProductDto)
     return await this.productRepository.save(newProduct)
   }
 
-  findAll() {
-    return this.productRepository.find();
+  async findAll() {
+    return await this.productRepository.find();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} product`;
+  async findOne(id: number) {
+    const product = await this.productRepository.findOneBy({ id });
+    if (!product) {
+      throw new BadRequestException("product not found")
+    } return product;
+    
   }
 
-  update(id: number, updateProductDto: UpdateProductDto) {
-    return `This action updates a #${id} product`;
+  async update(id: number, updateProductDto: UpdateProductDto) {
+    const productToUpdate = await this.findOne(id)
+    if (!productToUpdate) {
+      throw new NotFoundException("product not found")
+    }
+    const updatedProduct = Object.assign(productToUpdate, updateProductDto)
+    return this.productRepository.save(updatedProduct)
+    
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} product`;
+  async remove(id: number) {
+    const productToDelete = await this.findOne(id)
+    if (!productToDelete) {
+      throw new NotFoundException("product not found")
+    }return this.productRepository.softRemove(productToDelete)
   }
+
+
+
+      //otra forma de hacer el update es esta, ambas estan bien, pero la que no esta comentada cumple mas con los principios solid
+
+//   async update(id: number, updateProductDto: UpdateProductDto) {
+//   const productToUpdate = await this.findOne(id)
+//   if (!productToUpdate) {
+//     throw new NotFoundException("product not found")
+//   }
+//   return this.productRepository.update(id, updateProductDto)
+// }
 }
